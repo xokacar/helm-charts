@@ -1,0 +1,40 @@
+replicaCount: 1
+
+app:
+  name: app-name
+  namespace: app-namespace
+  environment: dev
+
+image:
+  repository: repository/image-name
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets:
+  - name: image-pull-secret-name
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+serviceAccount:
+  create: true
+  automount: true
+  name: service-account-name
+
+ports:
+  http: 8080
+
+probes:
+  initialDelaySeconds: 10
+  path: "/alive"
+
+envVariables:
+  - name: ENV_VAR_NAME
+    value: value
+
+secretEnvVariables:
+  - name: SECRET_ENV_VAR_NAME
+    secretName: secret-name
+    secretKey: secret-key

@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.name }}
+  namespace: {{ .Values.app.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }}
+        version: {{ .Values.image.tag | default "latest" | quote }}  
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+      - name: {{ .Values.app.name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.ports.http }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.probes.path | quote }}
+            port: {{ .Values.ports.http }}
+          initialDelaySeconds: {{ .Values.probes.initialDelaySeconds }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.probes.path | quote }}
+            port: {{ .Values.ports.http }}
+          initialDelaySeconds: {{ .Values.probes.initialDelaySeconds }}
+        env:
+        {{- range .Values.envVariables }}
+        - name: {{ .name | quote }}
+          value: {{ .value | quote }}
+        {{- end }}
+        {{- range .Values.secretEnvVariables }}
+        - name: {{ .name | quote }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .secretName | quote }}
+              key: {{ .secretKey | quote }}
+        {{- end }}
+        
+        
+        volumeMounts:
+          - name: secrets-store-inline
+            mountPath: /mnt/secrets-store
+            readOnly: true
+
+      volumes:
+        - name: secrets-store-inline
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "masraf-dev-secrets"
